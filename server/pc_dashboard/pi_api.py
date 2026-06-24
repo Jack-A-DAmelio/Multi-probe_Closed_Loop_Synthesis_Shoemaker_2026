@@ -17,7 +17,7 @@ import requests
 # CONFIGURE EXPERIMENT
 # =========================================================
 
-def configure_experiment(pi_url, experiment_id, enabled_probes):
+def configure_experiment(pi_url, experiment_id, enabled_probes, flush_interval_sec, sample_rate_hz):
     """
     Sends experiment configuration to Pi server.
 
@@ -25,6 +25,8 @@ def configure_experiment(pi_url, experiment_id, enabled_probes):
         pi_url (str): Base URL of Pi server
         experiment_id (str): Unique identifier for experiment session
         enabled_probes (list[str]): List of active sensors/probes
+        flush_interval_sec (float): Interval between data flushes (seconds)
+        sample_rate_hz (float): Sampling rate (Hertz)
 
     Returns:
         dict: JSON response from Pi server
@@ -33,7 +35,9 @@ def configure_experiment(pi_url, experiment_id, enabled_probes):
     # Payload defines experiment metadata and which sensors are active
     payload = {
         "experiment_id": experiment_id,
-        "enabled_probes": enabled_probes
+        "enabled_probes": enabled_probes,
+        "flush_interval_sec": flush_interval_sec,
+        "sample_rate_hz": sample_rate_hz
     }
 
     # Debug prints help confirm configuration before sending

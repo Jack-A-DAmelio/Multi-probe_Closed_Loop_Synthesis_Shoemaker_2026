@@ -11,6 +11,7 @@ Receives streamed data from the Pi and handles:
 
 This server acts as the central data collection layer
 between the Pi hardware and the PC dashboard.
+
 """
 
 from fastapi import FastAPI
@@ -225,3 +226,31 @@ def ingest(data: dict):
         return {"status": "error", "message": str(e)}
 
     return {"status": "ok"}
+
+# =========================================================
+# ENTRY POINT
+# =========================================================
+
+if __name__ == "__main__":
+    """
+    Launches the PC data server.
+
+    Host:
+        0.0.0.0
+        Allows connections from other machines on the network.
+
+    Port:
+        8000
+        Must match PC_URL used by both:
+        - dashboard
+        - Pi streaming logic
+    """
+
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        reload=False
+    )
