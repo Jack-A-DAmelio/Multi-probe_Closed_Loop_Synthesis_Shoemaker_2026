@@ -8,7 +8,7 @@ Internal Pi-Hardware Version: v0.1
 View this dashboard in a web browser at: http://127.0.0.1:8050
 """
 
-from dash import Dash, html, dcc, Input, Output, State
+from dash import Dash, html, dcc, Input, Output, State, ALL
 import dash
 import dash.exceptions
 
@@ -85,6 +85,7 @@ app.layout = html.Div([
 
     # stores run-state locally in browser session
     dcc.Store(id="run-state", data=False),
+    dcc.Store(id="module-spec-store"),
 
     # -------------------------
     # EXPERIMENT CONFIG
@@ -136,9 +137,38 @@ app.layout = html.Div([
         ),
 
         html.Div(id="live-panels")
-    ])
-])
+    ]),
 
+
+make_panel("Hardware Modules", [
+
+    html.Button(
+        "New Module",
+        id="new-module-btn"
+    ),
+
+    html.Br(),
+    html.Br(),
+
+    dcc.Dropdown(
+        id="module-dropdown",
+        placeholder="Select Module"
+    ),
+
+    html.Br(),
+
+    html.Div(id="module-spec-form"),
+
+    html.Br(),
+
+    html.Button(
+        "Create Module",
+        id="create-module-btn"
+    ),
+
+    html.Div(id="module-build-status")
+])
+])
 
 # =========================================================
 # CALLBACKS
@@ -181,6 +211,120 @@ app.layout = html.Div([
 #
 #below each call back is the function that is executed when the callback is triggered. The function's parameters correspond to the Inputs and State defined in the callback decorator. The function's return value(s) are assigned to the Output(s) defined in the decorator.
 # =========================================================
+
+@app.callback(
+    Output("module-dropdown", "options"),
+    Input("new-module-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+def load_modules(_):
+
+    result = pi_api.get_modules(PI_URL)
+
+    modules = result.get("modules", [])
+
+    return [
+        {
+            "label": name,
+            "value": name
+        }
+        for name in modules
+    ]
+
+@app.callback(
+    Output("module-spec-store", "data"),
+    Input("module-dropdown", "value"),
+    prevent_initial_call=True
+)
+def get_spec(module_name):
+
+    if not module_name:
+        raise dash.exceptions.PreventUpdate
+
+    return pi_api.get_module_spec(
+        PI_URL,
+        module_name
+    )
+
+@app.callback(
+    Output("module-spec-form", "children"),
+    Input("module-spec-store", "data")
+)
+def generate_module_form(spec):
+
+    if not spec:
+        return []
+
+    pins = spec.get("pins_required", {})
+
+    controls = []
+
+    for pin_name, description in pins.items():
+
+        controls.append(
+
+            html.Div([
+
+                html.Label(
+                    f"{pin_name}: {description}"
+                ),
+
+                dcc.Input(
+                    id={
+                        "type": "pin-input",
+                        "pin": pin_name
+                    },
+                    type="number",
+                    placeholder="Pin Number"
+                )
+
+            ])
+
+        )
+
+    return controls
+
+
+@app.callback(
+    Output("module-build-status", "children"),
+    Input("create-module-btn", "n_clicks"),
+    State("module-dropdown", "value"),
+    State(
+        {"type": "pin-input", "pin": ALL},
+        "value"
+    ),
+    State(
+        {"type": "pin-input", "pin": ALL},
+        "id"
+    ),
+    prevent_initial_call=True
+)
+def create_module(
+    _,
+    module_name,
+    pin_values,
+    pin_ids
+):
+
+    if not module_name:
+        raise dash.exceptions.PreventUpdate
+
+    pin_map = {}
+
+    for pin_id, value in zip(pin_ids, pin_values):
+
+        pin_map[
+            pin_id["pin"]
+        ] = value
+
+    result = pi_api.build_module(
+        PI_URL,
+        module_name,
+        pin_map
+    )
+
+    return str(result)
+
 @app.callback(
     Output("status-text", "children"),
     Input("config-btn", "n_clicks"),
