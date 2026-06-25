@@ -1,9 +1,11 @@
 """
 PC CONTROL DASHBOARD
 
-Author: Undergraduate Research Project
+Author: Jack A. D'Amelio
 Date: 2026-06-18
 Internal Pi-Hardware Version: v0.1
+
+View this dashboard in a web browser at: http://127.0.0.1:8050
 """
 
 from dash import Dash, html, dcc, Input, Output, State
@@ -90,10 +92,12 @@ app.layout = html.Div([
     make_panel("Experiment Setup", [
         dcc.Input(id="exp-name", placeholder="Experiment Name", type="text"),
         html.Br(), html.Br(),
-
-        dcc.Input(id="sample-rate", placeholder="Sample Rate (Hz)", type="number"),
+        html.Label("Sample Rate (Hz)"),
+        dcc.Input(id="sample-rate-hz", placeholder="Sample Rate (Hz)", type="number"),
         html.Br(), html.Br(),
-
+        html.Label("Flush Interval (sec)"),
+        dcc.Input(id="flush-interval-sec", placeholder="Flush Interval (sec)", type="number"),
+        html.Br(), html.Br(),
         probe_selector(),
         html.Br(),
 
@@ -137,18 +141,56 @@ app.layout = html.Div([
 
 
 # =========================================================
-# CALLBACKS (ORCHESTRATION ONLY)
+# CALLBACKS
 # =========================================================
-
+#
+# Dash applications are event-driven.
+#
+# Unlike a normal Python program, we do notT call these
+# functions ourselves.
+#
+# Dash monitors UI components (buttons, timers, text boxes,
+# dropdowns, etc.) and automatically executes callback
+# functions whenever an Input changes.
+#
+# Callback Anatomy:
+#
+#   Output:
+#       Which UI component gets updated.
+#
+#   Input:
+#       What event triggers the callback.
+#
+#   State:
+#       Additional values to read without triggering.
+#
+# Example:
+#
+#   Input("start-btn", "n_clicks")
+#
+# means:
+#   "Run this callback whenever the START button is clicked."
+#
+# Example:
+#
+#   Output("status-text", "children")
+#
+# means:
+#   "Place the callback's return value into the text shown
+#    inside the status-text component."
+#
+#below each call back is the function that is executed when the callback is triggered. The function's parameters correspond to the Inputs and State defined in the callback decorator. The function's return value(s) are assigned to the Output(s) defined in the decorator.
+# =========================================================
 @app.callback(
     Output("status-text", "children"),
     Input("config-btn", "n_clicks"),
     State("exp-name", "value"),
-    State("sample-rate", "value"),
     State("probe-select", "value"),
+    State("flush-interval-sec", "value"),
+    State("sample-rate-hz", "value"),
     prevent_initial_call=True
 )
-def configure(n, name, rate, probes):
+def configure(n, name, probes,flush_interval_sec, sample_rate_hz):
 
     if not n:
         raise dash.exceptions.PreventUpdate
@@ -159,7 +201,9 @@ def configure(n, name, rate, probes):
     result_pi = pi_api.configure_experiment(
         PI_URL,
         experiment_id=name,
-        enabled_probes=probes
+        enabled_probes=probes,
+        flush_interval_sec=flush_interval_sec,
+        sample_rate_hz=sample_rate_hz
     )
 
     # -------------------------
